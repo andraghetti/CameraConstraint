@@ -19,7 +19,9 @@ class GameViewController: UIViewController {
     
     //HANDLE PAN CAMERA
     var lastWidthRatio: Float = 0
-    var lastHeightRatio: Float = 0.2
+    var lastHeightRatio: Float = 0.1
+    var widthRatio: Float = 0
+    var heightRatio: Float = 0.1
     var fingersNeededToPan = 1
     var maxWidthRatioRight: Float = 0.2
     var maxWidthRatioLeft: Float = -0.2
@@ -89,10 +91,12 @@ class GameViewController: UIViewController {
         let numberOfTouches = gestureRecognize.numberOfTouches()
         
         let translation = gestureRecognize.translationInView(gestureRecognize.view!)
-        var widthRatio = Float(translation.x) / Float(gestureRecognize.view!.frame.size.width) + lastWidthRatio
-        var heightRatio = Float(translation.y) / Float(gestureRecognize.view!.frame.size.height) + lastHeightRatio
         
         if (numberOfTouches==fingersNeededToPan) {
+            
+            widthRatio = Float(translation.x) / Float(gestureRecognize.view!.frame.size.width) + lastWidthRatio
+            heightRatio = Float(translation.y) / Float(gestureRecognize.view!.frame.size.height) + lastHeightRatio
+
             
             //  HEIGHT constraints
             if (heightRatio >= maxHeightRatioXUp ) {
