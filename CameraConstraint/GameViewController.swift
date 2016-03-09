@@ -1,3 +1,15 @@
+//
+//  GameViewController.swift
+//  CameraConstraint
+//
+//  Created by Andraghetti on 09/03/16.
+//  Copyright (c) 2016 Lorenzo Andraghetti. All rights reserved.
+//
+
+import UIKit
+import QuartzCore
+import SceneKit
+
 class GameViewController: UIViewController {
     
     var cameraOrbit = SCNNode()
