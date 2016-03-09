@@ -1,30 +1,28 @@
-//
-//  GameViewController.swift
-//  CameraConstraint
-//
-//  Created by Andraghetti on 09/03/16.
-//  Copyright (c) 2016 Lorenzo Andraghetti. All rights reserved.
-//
-
-import UIKit
-import QuartzCore
-import SceneKit
-
 class GameViewController: UIViewController {
-
+    
+    var cameraOrbit = SCNNode()
+    let cameraNode = SCNNode()
+    let camera = SCNCamera()
+    
+    
+    //HANDLE PAN CAMERA
+    var lastWidthRatio: Float = 0
+    var lastHeightRatio: Float = 0.2
+    var fingersNeededToPan = 1
+    var maxWidthRatioRight: Float = 0.2
+    var maxWidthRatioLeft: Float = -0.2
+    var maxHeightRatioXDown: Float = 0.02
+    var maxHeightRatioXUp: Float = 0.4
+    
+    //HANDLE PINCH CAMERA
+    var pinchAttenuation = 20.0  //1.0: very fast ---- 100.0 very slow
+    var lastFingersNumber = 0
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // create a new scene
         let scene = SCNScene(named: "art.scnassets/ship.scn")!
-        
-        // create and add a camera to the scene
-        let cameraNode = SCNNode()
-        cameraNode.camera = SCNCamera()
-        scene.rootNode.addChildNode(cameraNode)
-        
-        // place the camera
-        cameraNode.position = SCNVector3(x: 0, y: 0, z: 15)
         
         // create and add a light to the scene
         let lightNode = SCNNode()
@@ -40,11 +38,21 @@ class GameViewController: UIViewController {
         ambientLightNode.light!.color = UIColor.darkGrayColor()
         scene.rootNode.addChildNode(ambientLightNode)
         
-        // retrieve the ship node
-        let ship = scene.rootNode.childNodeWithName("ship", recursively: true)!
+        //Create a camera like Rickster said
+        camera.usesOrthographicProjection = true
+        camera.orthographicScale = 9
+        camera.zNear = 1
+        camera.zFar = 100
         
-        // animate the 3d object
-        ship.runAction(SCNAction.repeatActionForever(SCNAction.rotateByX(0, y: 2, z: 0, duration: 1)))
+        cameraNode.position = SCNVector3(x: 0, y: 0, z: 50)
+        cameraNode.camera = camera
+        cameraOrbit = SCNNode()
+        cameraOrbit.addChildNode(cameraNode)
+        scene.rootNode.addChildNode(cameraOrbit)
+        
+        //initial camera setup
+        self.cameraOrbit.eulerAngles.y = Float(-2 * M_PI) * lastWidthRatio
+        self.cameraOrbit.eulerAngles.x = Float(-M_PI) * lastHeightRatio
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
@@ -52,74 +60,87 @@ class GameViewController: UIViewController {
         // set the scene to the view
         scnView.scene = scene
         
-        // allows the user to manipulate the camera
-        scnView.allowsCameraControl = true
-        
-        // show statistics such as fps and timing information
-        scnView.showsStatistics = true
-        
-        // configure the view
-        scnView.backgroundColor = UIColor.blackColor()
+        //allows the user to manipulate the camera
+        scnView.allowsCameraControl = false  //not needed
         
         // add a tap gesture recognizer
-        let tapGesture = UITapGestureRecognizer(target: self, action: "handleTap:")
-        scnView.addGestureRecognizer(tapGesture)
+        let panGesture = UIPanGestureRecognizer(target: self, action: "handlePan:")
+        scnView.addGestureRecognizer(panGesture)
+        
+        // add a pinch gesture recognizer
+        let pinchGesture = UIPinchGestureRecognizer(target: self, action: "handlePinch:")
+        scnView.addGestureRecognizer(pinchGesture)
     }
     
-    func handleTap(gestureRecognize: UIGestureRecognizer) {
-        // retrieve the SCNView
-        let scnView = self.view as! SCNView
+    func handlePan(gestureRecognize: UIPanGestureRecognizer) {
         
-        // check what nodes are tapped
-        let p = gestureRecognize.locationInView(scnView)
-        let hitResults = scnView.hitTest(p, options: nil)
-        // check that we clicked on at least one object
-        if hitResults.count > 0 {
-            // retrieved the first clicked object
-            let result: AnyObject! = hitResults[0]
+        let numberOfTouches = gestureRecognize.numberOfTouches()
+        
+        let translation = gestureRecognize.translationInView(gestureRecognize.view!)
+        var widthRatio = Float(translation.x) / Float(gestureRecognize.view!.frame.size.width) + lastWidthRatio
+        var heightRatio = Float(translation.y) / Float(gestureRecognize.view!.frame.size.height) + lastHeightRatio
+        
+        if (numberOfTouches==fingersNeededToPan) {
             
-            // get its material
-            let material = result.node!.geometry!.firstMaterial!
-            
-            // highlight it
-            SCNTransaction.begin()
-            SCNTransaction.setAnimationDuration(0.5)
-            
-            // on completion - unhighlight
-            SCNTransaction.setCompletionBlock {
-                SCNTransaction.begin()
-                SCNTransaction.setAnimationDuration(0.5)
-                
-                material.emission.contents = UIColor.blackColor()
-                
-                SCNTransaction.commit()
+            //  HEIGHT constraints
+            if (heightRatio >= maxHeightRatioXUp ) {
+                heightRatio = maxHeightRatioXUp
+            }
+            if (heightRatio <= maxHeightRatioXDown ) {
+                heightRatio = maxHeightRatioXDown
             }
             
-            material.emission.contents = UIColor.redColor()
             
-            SCNTransaction.commit()
+            //  WIDTH constraints
+            if(widthRatio >= maxWidthRatioRight) {
+                widthRatio = maxWidthRatioRight
+            }
+            if(widthRatio <= maxWidthRatioLeft) {
+                widthRatio = maxWidthRatioLeft
+            }
+            
+            self.cameraOrbit.eulerAngles.y = Float(-2 * M_PI) * widthRatio
+            self.cameraOrbit.eulerAngles.x = Float(-M_PI) * heightRatio
+            
+            print("Height: \(round(heightRatio*100))")
+            print("Width: \(round(widthRatio*100))")
+            
+            
+            //for final check on fingers number
+            lastFingersNumber = fingersNeededToPan
+        }
+        
+        lastFingersNumber = (numberOfTouches>0 ? numberOfTouches : lastFingersNumber)
+        
+        if (gestureRecognize.state == .Ended && lastFingersNumber==fingersNeededToPan) {
+            lastWidthRatio = widthRatio
+            lastHeightRatio = heightRatio
+            print("Pan with \(lastFingersNumber) finger\(lastFingersNumber>1 ? "s" : "")")
         }
     }
     
-    override func shouldAutorotate() -> Bool {
-        return true
-    }
-    
-    override func prefersStatusBarHidden() -> Bool {
-        return true
+    func handlePinch(gestureRecognize: UIPinchGestureRecognizer) {
+        let pinchVelocity = Double.init(gestureRecognize.velocity)
+        //print("PinchVelocity \(pinchVelocity)")
+        
+        camera.orthographicScale -= (pinchVelocity/pinchAttenuation)
+        
+        if camera.orthographicScale <= 0.5 {
+            camera.orthographicScale = 0.5
+        }
+        
+        if camera.orthographicScale >= 10.0 {
+            camera.orthographicScale = 10.0
+        }
+        
     }
     
     override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
-        if UIDevice.currentDevice().userInterfaceIdiom == .Phone {
-            return .AllButUpsideDown
-        } else {
-            return .All
-        }
+        return .Landscape
     }
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Release any cached data, images, etc that aren't in use.
     }
-
 }
