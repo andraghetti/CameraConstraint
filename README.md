@@ -1,5 +1,5 @@
 # CameraConstraint
-This is a template for all of you, SCNCamera haters! Are you seeking for a good implementation of Rickster reply on Stack Overflow? Here it is.
+This is a template for all of you, SCNCamera haters! Are you seeking a good implementation? Here it is.
 
 In response to: 
 
